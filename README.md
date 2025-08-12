@@ -24,32 +24,17 @@ The plugin provides a toolbar with the following tools:
 
 *   **Import CSV:** Imports one or more CSV files as new editable layers. You will be prompted to select the delimiter and the X and Y fields.
 *   **Delete Selected Point(s):** Deletes the selected points from the active layer.
-*   **Edit Attributes:** Opens an attribute form for a single selected point, or the attribute table for multiple selected points.
-*   **Undo Last Action:** Undoes the last action (e.g., point deletion).
 *   **Save to CSV:** Saves the active layer to a new CSV file.
 *   **Save Multiple CSVs:** Saves all modified CSV layers to a selected folder.
 
-### Moving Points
+### Editing and Moving Points
 
-To move points, you need to use the built-in QGIS tools:
+To add, move, or edit points and their attributes, you need to use the built-in QGIS tools:
 1.  Select the layer you want to edit in the Layers panel.
 2.  Toggle editing by clicking the pencil icon in the toolbar or by right-clicking the layer and selecting `Toggle Editing`.
-3.  Use the `Vertex Tool` from the `Digitizing Toolbar` to move the points. Select a point and drag it to a new location.
+3.  Use the tools from the `Digitizing Toolbar`:
+    *   **Add Point Feature:** To add new points.
+    *   **Vertex Tool:** To move points.
+    *   **Identify Features:** To view and edit attributes of a point.
 4.  When you are done, toggle editing off and save the changes.
-
-### Editing Points
-
-#### Adding Points
-To add new points, you need to use the built-in QGIS "Add Point Feature" tool:
-1.  Select the layer you want to edit in the Layers panel.
-2.  Toggle editing on for the layer.
-3.  Click on the "Add Point Feature" button in the `Digitizing Toolbar`.
-4.  Click on the map to add a new point. You will be prompted to enter the attribute values for the new point.
-
-#### Editing Attributes
-To edit the attributes of existing points:
-1.  Select the point(s) you want to edit.
-2.  Click the **Edit Attributes** button in the plugin's toolbar.
-    *   If you have a single point selected, a form will open to edit its attributes.
-    *   If you have multiple points selected, the attribute table will open.
-3.  You can also open the attribute table by right-clicking the layer and selecting `Open Attribute Table`.
+5.  You can also edit attributes in the attribute table by right-clicking the layer and selecting `Open Attribute Table`.

@@ -18,29 +18,23 @@ class EditableCSV:
         # Create the actions
         self.import_csv_action = QAction(QIcon(os.path.dirname(__file__) + "/icon.png"), "Import CSV", self.iface.mainWindow())
         self.delete_point_action = QAction(QIcon(os.path.dirname(__file__) + "/delete.png"), "Delete Selected Point(s)", self.iface.mainWindow())
-        self.edit_attributes_action = QAction(QIcon(os.path.dirname(__file__) + "/edit_attributes.png"), "Edit Attributes", self.iface.mainWindow())
-        self.undo_action = QAction(QIcon(os.path.dirname(__file__) + "/undo.png"), "Undo Last Action", self.iface.mainWindow())
         self.save_to_csv_action = QAction(QIcon(os.path.dirname(__file__) + "/save.png"), "Save to CSV", self.iface.mainWindow())
         self.save_multiple_action = QAction(QIcon(os.path.dirname(__file__) + "/save_multiple.png"), "Save Multiple CSVs", self.iface.mainWindow())
 
         # Connect to signals
         self.import_csv_action.triggered.connect(self.import_csv)
         self.delete_point_action.triggered.connect(self.delete_point)
-        self.edit_attributes_action.triggered.connect(self.edit_attributes)
-        self.undo_action.triggered.connect(self._undo_action)
         self.save_to_csv_action.triggered.connect(self.save_to_csv)
         self.save_multiple_action.triggered.connect(self.save_multiple_csvs)
 
         # Add actions to the toolbar
         self.toolbar.addAction(self.import_csv_action)
         self.toolbar.addAction(self.delete_point_action)
-        self.toolbar.addAction(self.edit_attributes_action)
-        self.toolbar.addAction(self.undo_action)
         self.toolbar.addAction(self.save_to_csv_action)
         self.toolbar.addAction(self.save_multiple_action)
 
         # Add actions to the list for unloading
-        self.actions = [self.import_csv_action, self.delete_point_action, self.edit_attributes_action, self.undo_action, self.save_to_csv_action, self.save_multiple_action]
+        self.actions = [self.import_csv_action, self.delete_point_action, self.save_to_csv_action, self.save_multiple_action]
 
     def unload(self):
         for action in self.actions:
@@ -123,8 +117,7 @@ class EditableCSV:
         else:
             self.iface.messageBar().pushMessage("Info", "Deletion cancelled.", level=Qgis.Info)
 
-    def _undo_action(self):
-        self.iface.undoStack().undo()
+    
 
     def save_to_csv(self):
         import csv
@@ -165,20 +158,7 @@ class EditableCSV:
             except Exception as e:
                 self.iface.messageBar().pushMessage("Error", f"Error saving CSV: {e}", level=Qgis.Critical)
 
-    def edit_attributes(self):
-        layer = self.iface.activeLayer()
-        if not layer:
-            self.iface.messageBar().pushMessage("Warning", "Please select a layer.", level=Qgis.Warning)
-            return
-
-        selected_features = layer.selectedFeatures()
-
-        if len(selected_features) == 1:
-            feature = selected_features[0]
-            self.iface.openFeatureForm(layer, feature)
-        else:
-            # If 0 or more than 1 feature is selected, open the attribute table
-            self.iface.showAttributeTable(layer)
+    
 
     def save_multiple_csvs(self):
         from .save_multiple_csv_dialog import SaveMultipleCsvDialog
