@@ -2,9 +2,9 @@
 name=Editable CSV
 description=Import, edit, and export CSV files as point layers.
 about=This plugin allows you to import CSV files as point layers, edit their geometry and attributes, and save them back to CSV format.
-version=0.1
+version=1.0
 qgisMinimumVersion=3.0
-author=Ravichandiran Balaji, Gemini
+author=Balaji, Gemini
 email=balaji@moovita.com, gemini@google.com
 icon=icon.png
 

@@ -1,4 +1,4 @@
-from qgis.core import QgsProject, QgsVectorLayer, QgsVectorFileWriter, Qgis
+from qgis.core import QgsProject, QgsVectorLayer, QgsVectorFileWriter, Qgis, QgsFeature
 from qgis.gui import QgsMessageBar
 from PyQt5.QtWidgets import QAction, QToolBar, QFileDialog, QMessageBox
 from PyQt5.QtGui import QIcon
@@ -16,25 +16,28 @@ class EditableCSV:
         self.iface.addToolBar(self.toolbar)
 
         # Create the actions
-        self.import_csv_action = QAction(QIcon(os.path.dirname(__file__) + "/icon.png"), "Import CSV", self.iface.mainWindow())
+        self.import_csv_action = QAction(QIcon(os.path.dirname(__file__) + "/icon.png"), "Import Editable CSV", self.iface.mainWindow())
+        self.reload_action = QAction(QIcon(os.path.dirname(__file__) + "/undo.png"), "Reload Layer from File", self.iface.mainWindow())
         self.delete_point_action = QAction(QIcon(os.path.dirname(__file__) + "/delete.png"), "Delete Selected Point(s)", self.iface.mainWindow())
-        self.save_to_csv_action = QAction(QIcon(os.path.dirname(__file__) + "/save.png"), "Save to CSV", self.iface.mainWindow())
-        self.save_multiple_action = QAction(QIcon(os.path.dirname(__file__) + "/save_multiple.png"), "Save Multiple CSVs", self.iface.mainWindow())
+        self.save_to_csv_action = QAction(QIcon(os.path.dirname(__file__) + "/save.png"), "Save selected CSV", self.iface.mainWindow())
+        self.save_multiple_action = QAction(QIcon(os.path.dirname(__file__) + "/save_multiple.png"), "Save all modified CSVs", self.iface.mainWindow())
 
         # Connect to signals
         self.import_csv_action.triggered.connect(self.import_csv)
+        self.reload_action.triggered.connect(self.reload_layer_data)
         self.delete_point_action.triggered.connect(self.delete_point)
         self.save_to_csv_action.triggered.connect(self.save_to_csv)
         self.save_multiple_action.triggered.connect(self.save_multiple_csvs)
 
         # Add actions to the toolbar
         self.toolbar.addAction(self.import_csv_action)
+        self.toolbar.addAction(self.reload_action)
         self.toolbar.addAction(self.delete_point_action)
         self.toolbar.addAction(self.save_to_csv_action)
         self.toolbar.addAction(self.save_multiple_action)
 
         # Add actions to the list for unloading
-        self.actions = [self.import_csv_action, self.delete_point_action, self.save_to_csv_action, self.save_multiple_action]
+        self.actions = [self.import_csv_action, self.reload_action, self.delete_point_action, self.save_to_csv_action, self.save_multiple_action]
 
     def unload(self):
         for action in self.actions:
@@ -59,8 +62,9 @@ class EditableCSV:
                 delimiter = options["delimiter"]
                 x_field = options["x_field"]
                 y_field = options["y_field"]
+                detect_types = "yes" if options["detect_types"] else "no"
 
-                uri = f"file://{file_path}?delimiter={delimiter}&xField={x_field}&yField={y_field}"
+                uri = f"file://{file_path}?delimiter={delimiter}&xField={x_field}&yField={y_field}&detectTypes={detect_types}"
                 source_layer = QgsVectorLayer(uri, "source_csv_temp", "delimitedtext")
 
                 if not source_layer.isValid():
@@ -84,6 +88,7 @@ class EditableCSV:
                 mem_layer.setCustomProperty('original_x_field', x_field)
                 mem_layer.setCustomProperty('original_y_field', y_field)
                 mem_layer.setCustomProperty('original_file_path', file_path)
+                mem_layer.setCustomProperty('detect_types', detect_types)
 
                 QgsProject.instance().addMapLayer(mem_layer)
                 self.iface.messageBar().pushMessage("Success", f"Layer '{layer_name}' added successfully as an editable layer.", level=Qgis.Success)
@@ -92,6 +97,50 @@ class EditableCSV:
 
     
 
+    def reload_layer_data(self):
+        layer = self.iface.activeLayer()
+        if not layer:
+            self.iface.messageBar().pushMessage("Warning", "Please select a layer to reload.", level=Qgis.Warning)
+            return
+
+        original_file_path = layer.customProperty('original_file_path')
+        if not original_file_path:
+            self.iface.messageBar().pushMessage("Warning", "This layer was not imported by the Editable CSV plugin and cannot be reloaded.", level=Qgis.Warning)
+            return
+
+        original_delimiter = layer.customProperty('original_delimiter')
+        original_x_field = layer.customProperty('original_x_field')
+        original_y_field = layer.customProperty('original_y_field')
+        detect_types_str = layer.customProperty('detect_types', 'yes')
+
+        uri = f"file://{original_file_path}?delimiter={original_delimiter}&xField={original_x_field}&yField={original_y_field}&detectTypes={detect_types_str}"
+        source_layer = QgsVectorLayer(uri, "source_csv_temp_reload", "delimitedtext")
+
+        if not source_layer.isValid():
+            self.iface.messageBar().pushMessage("Error", f"Failed to read original CSV file: {os.path.basename(original_file_path)}", level=Qgis.Critical)
+            return
+
+        if source_layer.fields().count() != layer.fields().count() or \
+           [f.name() for f in source_layer.fields()] != [f.name() for f in layer.fields()]:
+            self.iface.messageBar().pushMessage("Warning", "The schema of the source CSV file has changed. Reloading is not supported in this case.", level=Qgis.Warning)
+            return
+
+        layer.startEditing()
+        layer.deleteFeatures([f.id() for f in layer.getFeatures()])
+        
+        new_features = []
+        for f in source_layer.getFeatures():
+            new_feat = QgsFeature()
+            new_feat.setGeometry(f.geometry())
+            new_feat.setAttributes(f.attributes())
+            new_features.append(new_feat)
+            
+        layer.addFeatures(new_features)
+        layer.commitChanges()
+        self.iface.mapCanvas().refresh()
+        self.iface.messageBar().pushMessage("Success", f"Layer '{layer.name()}' reloaded successfully.", level=Qgis.Success)
+
+    
     def delete_point(self):
         layer = self.iface.activeLayer()
         if not layer:
@@ -129,12 +178,13 @@ class EditableCSV:
         original_delimiter = layer.customProperty('original_delimiter')
         original_x_field = layer.customProperty('original_x_field')
         original_y_field = layer.customProperty('original_y_field')
+        original_file_path = layer.customProperty('original_file_path', '') # Provide a default value
 
         if not all([original_delimiter, original_x_field, original_y_field]):
             self.iface.messageBar().pushMessage("Error", "Cannot save: Original CSV properties not found for this layer.", level=Qgis.Critical)
             return
 
-        file_name, _ = QFileDialog.getSaveFileName(self.iface.mainWindow(), "Save CSV File", "", "CSV Files (*.csv)")
+        file_name, _ = QFileDialog.getSaveFileName(self.iface.mainWindow(), "Save CSV File", original_file_path, "CSV Files (*.csv)")
         if file_name:
             try:
                 with open(file_name, 'w', newline='') as csvfile:

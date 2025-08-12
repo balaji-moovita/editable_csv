@@ -1,5 +1,4 @@
-
-from PyQt5.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QComboBox, QFileDialog
+from PyQt5.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QComboBox, QFileDialog, QCheckBox
 import csv
 
 class ImportCsvDialog(QDialog):
@@ -42,6 +41,11 @@ class ImportCsvDialog(QDialog):
         self.y_layout.addWidget(self.y_label)
         self.y_layout.addWidget(self.y_combo)
         self.layout.addLayout(self.y_layout)
+
+        # Detect types checkbox
+        self.detect_types_checkbox = QCheckBox("Detect field types")
+        self.detect_types_checkbox.setChecked(False)
+        self.layout.addWidget(self.detect_types_checkbox)
 
         # Buttons
         self.button_layout = QHBoxLayout()
@@ -90,4 +94,5 @@ class ImportCsvDialog(QDialog):
             "delimiter": self.delimiter_combo.currentText(),
             "x_field": self.x_combo.currentText(),
             "y_field": self.y_combo.currentText(),
+            "detect_types": self.detect_types_checkbox.isChecked(),
         }
