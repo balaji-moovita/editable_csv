@@ -108,6 +108,14 @@ class EditableCSV:
             self.iface.messageBar().pushMessage("Warning", "This layer was not imported by the Editable CSV plugin and cannot be reloaded.", level=Qgis.Warning)
             return
 
+        reply = QMessageBox.question(self.iface.mainWindow(), 'Reload Layer', 
+                                     f"Are you sure you want to reload the layer '{layer.name()}' from its original file? Any unsaved changes will be lost.",
+                                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+
+        if reply == QMessageBox.No:
+            self.iface.messageBar().pushMessage("Info", "Reload cancelled.", level=Qgis.Info)
+            return
+
         original_delimiter = layer.customProperty('original_delimiter')
         original_x_field = layer.customProperty('original_x_field')
         original_y_field = layer.customProperty('original_y_field')
