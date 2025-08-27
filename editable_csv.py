@@ -54,46 +54,75 @@ class EditableCSV:
             return # User cancelled
 
         for file_path in file_names:
-            dialog = ImportCsvDialog(self.iface.mainWindow())
-            dialog.file_edit.setText(file_path) # Pre-fill the file path
+            x_field = ''
+            y_field = ''
             
-            if dialog.exec_():
-                options = dialog.get_options()
-                delimiter = options["delimiter"]
-                x_field = options["x_field"]
-                y_field = options["y_field"]
-                detect_types = "yes" if options["detect_types"] else "no"
+            try:
+                with open(file_path, 'r') as f:
+                    sniffer = csv.Sniffer()
+                    dialect = sniffer.sniff(f.read(1024))
+                    f.seek(0)
+                    delimiter = dialect.delimiter
+                    reader = csv.reader(f, dialect)
+                    header = next(reader)
+                    # Auto-select X and Y fields if present
+                    for field in header:
+                        if field.lower() == 'x':
+                            x_field = field
+                        if field.lower() == 'y':
+                            y_field = field
+            except Exception as e:
+                print(f"Error reading CSV header: {e}")
 
-                uri = f"file://{file_path}?delimiter={delimiter}&xField={x_field}&yField={y_field}&detectTypes={detect_types}"
-                source_layer = QgsVectorLayer(uri, "source_csv_temp", "delimitedtext")
-
-                if not source_layer.isValid():
-                    self.iface.messageBar().pushMessage("Error", f"Failed to read CSV file: {os.path.basename(file_path)}", level=Qgis.Critical)
-                    continue
-
-                layer_name = os.path.basename(file_path).replace('.csv', '')
-                crs = source_layer.crs().authid() if source_layer.crs().isValid() else "EPSG:4326"
-                mem_layer = QgsVectorLayer(f"Point?crs={crs}", layer_name, "memory")
-
-                mem_provider = mem_layer.dataProvider()
-                mem_provider.addAttributes(source_layer.fields())
-                mem_layer.updateFields()
-
-                mem_layer.startEditing()
-                for feature in source_layer.getFeatures():
-                    mem_provider.addFeature(feature)
-                mem_layer.commitChanges()
-
-                mem_layer.setCustomProperty('original_delimiter', delimiter)
-                mem_layer.setCustomProperty('original_x_field', x_field)
-                mem_layer.setCustomProperty('original_y_field', y_field)
-                mem_layer.setCustomProperty('original_file_path', file_path)
-                mem_layer.setCustomProperty('detect_types', detect_types)
-
-                QgsProject.instance().addMapLayer(mem_layer)
-                self.iface.messageBar().pushMessage("Success", f"Layer '{layer_name}' added successfully as an editable layer.", level=Qgis.Success)
+            if len(file_names) > 1 and x_field and y_field:
+                options = {
+                    "file_path": file_path,
+                    "delimiter": delimiter,
+                    "x_field": x_field,
+                    "y_field": y_field,
+                    "detect_types": False,
+                }
             else:
-                self.iface.messageBar().pushMessage("Info", f"Import of {os.path.basename(file_path)} cancelled.", level=Qgis.Info)
+                dialog = ImportCsvDialog(self.iface.mainWindow())
+                dialog.file_edit.setText(file_path) # Pre-fill the file path
+                if not dialog.exec_():
+                    self.iface.messageBar().pushMessage("Info", f"Import of {os.path.basename(file_path)} cancelled.", level=Qgis.Info)
+                    continue
+                options = dialog.get_options()
+
+            delimiter = options["delimiter"]
+            x_field = options["x_field"]
+            y_field = options["y_field"]
+            detect_types = "yes" if options["detect_types"] else "no"
+
+            uri = f"file://{file_path}?delimiter={delimiter}&xField={x_field}&yField={y_field}&detectTypes={detect_types}"
+            source_layer = QgsVectorLayer(uri, "source_csv_temp", "delimitedtext")
+
+            if not source_layer.isValid():
+                self.iface.messageBar().pushMessage("Error", f"Failed to read CSV file: {os.path.basename(file_path)}", level=Qgis.Critical)
+                continue
+
+            layer_name = os.path.basename(file_path).replace('.csv', '')
+            crs = source_layer.crs().authid() if source_layer.crs().isValid() else "EPSG:4326"
+            mem_layer = QgsVectorLayer(f"Point?crs={crs}", layer_name, "memory")
+
+            mem_provider = mem_layer.dataProvider()
+            mem_provider.addAttributes(source_layer.fields())
+            mem_layer.updateFields()
+
+            mem_layer.startEditing()
+            for feature in source_layer.getFeatures():
+                mem_provider.addFeature(feature)
+            mem_layer.commitChanges()
+
+            mem_layer.setCustomProperty('original_delimiter', delimiter)
+            mem_layer.setCustomProperty('original_x_field', x_field)
+            mem_layer.setCustomProperty('original_y_field', y_field)
+            mem_layer.setCustomProperty('original_file_path', file_path)
+            mem_layer.setCustomProperty('detect_types', detect_types)
+
+            QgsProject.instance().addMapLayer(mem_layer)
+            self.iface.messageBar().pushMessage("Success", f"Layer '{layer_name}' added successfully as an editable layer.", level=Qgis.Success)
 
     
 
